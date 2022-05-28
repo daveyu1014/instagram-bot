@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Sat May 28 19:01:34 2022
-
-@author: dave7
-"""
 
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -15,62 +10,84 @@ import os
 import wget
 
 class instagramBot:
-    def __init__(self, username, password, url):
+    def __init__(self, username, password):
         self.username = username
         self.password = password
-        self.driver= webdriver.chrome(r'C:\webdriver\chromedriver')
-        self.url = "http://www.instagram.com"
+        self.driver= webdriver.Chrome(r'C:\webdriver\chromedriver')
+        self.url="http://www.instagram.com"
 
-    def get_driver():
-        driver = webdriver.Chrome(r'C:\webdriver\chromedriver')
+
+    def get_driver(self):
+        driver=self.driver
         driver.implicitly_wait(10)
-        url="http://www.instagram.com"
-        driver.get(url)
+        driver.get(self.url)
 
     def login(self):
-    
-        username = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[name='username']")))
-        password = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[name='password']")))
-
+        self.get_driver()
+        username = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[name='username']")))
+        password = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[name='password']")))
         #username and password
         username.clear()
-        username.send_keys("my_username")
+        username.send_keys(self.username)
         password.clear()
-        password.send_keys("my_password")
-
+        password.send_keys(self.password)
         #login button and click
-        button = WebDriverWait(driver, 2).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button[type='submit']"))).click()
+        button = WebDriverWait(self.driver, 2).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button[type='submit']"))).click()
+        time.sleep(5)
+        x_path='/html/body/div[1]/section/main/div/div/div/div/button'
+        not_now = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.XPATH, '//button[contains(text(), "稍後再說")]'))).click()
+        time.sleep(3)
 
-# NOT NOW
-not_now = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, '//button[contains(text(), "Not Now")]'))).click()
-not_now2 = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, '//button[contains(text(), "Not Now")]'))).click()
+    def close_alert(self):
+        not_now = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.XPATH, '//button[contains(text(), "稍後再說")]'))).click()
+        
+        
+    def search_img(self,keyword):
+        #target the search input field
+        searchbox = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//input[@placeholder='搜尋']")))
+        searchbox.clear()
+        
+        #hashtag keyword
+        searchbox.send_keys('#' + keyword)
+        time.sleep(2)
+        searchbox.send_keys(Keys.RETURN)
+        time.sleep(2)
+        searchbox.send_keys(Keys.RETURN)
+        time.sleep(5)
+        
+        # scroll image
+        self.driver.execute_script("window.scrollTo(0, 4000);")
+        images = self.driver.find_elements_by_tag_name('img')
+        images = [image.get_attribute('src') for image in images]
+        images = images[:-2]
+        print('Number of scraped images: ', len(images))
+        self.images = images
 
-#target the search input field
-searchbox = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//input[@placeholder='Search']")))
-searchbox.clear()
+    def download_img(self, keyword):
+            path= (f'C:\\Users\\dave7\\Downloads\\{keyword}')
+            if not os.path.exists(path):
+                os.makedirs(path)
+            else:
+                print('folder exists')
+        
+            counter = 0
+            for img in self.images[1:]:
+                save_as = os.path.join(path, keyword + str(counter) + '.jpg')
+                wget.download(img, save_as)
+                counter +=1
 
-#hashtag keyword
-keyword = "#travel"
-searchbox.send_keys(keyword)
- 
-# Wait for 5 seconds
-time.sleep(5)
-searchbox.send_keys(Keys.ENTER)
-time.sleep(5)
-searchbox.send_keys(Keys.ENTER)
-time.sleep(5)
-
-driver.execute_script("window.scrollTo(0, 4000);")
-images = driver.find_elements_by_tag_name('img')
-images = [image.get_attribute('src') for image in images]
-images = images[:-2]
-print('Number of scraped images: ', len(images))
-
-
-path = (r"C:\Users\dave7\Downloads")
-print(path)
-os.chdir(path)
-path = os.path.join(path, 'test')
-os.mkdir(path)
-save_as = os.path.join(path, 'picture.jpg')
-wget.download(url, save_as)
+acc = instagramBot('username', 'password')
+acc.login()
+while True:
+    try:
+        acc.close_alert()
+        keyword='travel'
+        acc.search_img(keyword)
+        
+        acc.download_img(keyword)
+    except Exception as e:
+        acc.close_alert()
+        print(e)
+    finally:
+        acc.driver.close()
+        break
